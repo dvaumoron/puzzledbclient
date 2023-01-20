@@ -23,7 +23,10 @@ import (
 	"strings"
 
 	"github.com/glebarez/sqlite" // driver without cgo
+	"gorm.io/driver/clickhouse"
+	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
 )
 
@@ -36,6 +39,12 @@ func Create() *gorm.DB {
 		dialector = sqlite.Open(addr)
 	case "postgres":
 		dialector = postgres.Open(addr)
+	case "mysql":
+		dialector = mysql.Open(addr)
+	case "sqlserver":
+		dialector = sqlserver.Open(addr)
+	case "clickhouse":
+		dialector = clickhouse.Open(addr)
 	default:
 		log.Fatalf("Unknown database type : %v", kind)
 	}
