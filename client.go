@@ -54,3 +54,20 @@ func Create() *gorm.DB {
 	}
 	return db
 }
+
+func Paginate(db *gorm.DB, start uint64, end uint64) *gorm.DB {
+	return db.Offset(int(start)).Limit(int(end - start))
+}
+
+func BuildLikeFilter(filter string) string {
+	filter = strings.ReplaceAll(filter, ".*", "%")
+	var likeBuilder strings.Builder
+	if strings.IndexByte(filter, '%') != 0 {
+		likeBuilder.WriteByte('%')
+	}
+	likeBuilder.WriteString(filter)
+	if strings.LastIndexByte(filter, '%') != len(filter)-1 {
+		likeBuilder.WriteByte('%')
+	}
+	return likeBuilder.String()
+}
