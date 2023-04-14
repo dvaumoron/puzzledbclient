@@ -46,11 +46,11 @@ func Create() *gorm.DB {
 	case "clickhouse":
 		dialector = clickhouse.Open(addr)
 	default:
-		log.Fatal("Unknown database type :", kind)
+		log.Fatalln("Unknown database type :", kind)
 	}
 	db, err := gorm.Open(dialector, &gorm.Config{})
 	if err != nil {
-		log.Fatal("Database connection failed :", err)
+		log.Fatalln("Database connection failed :", err)
 	}
 	return db
 }
