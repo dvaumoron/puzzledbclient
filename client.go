@@ -18,25 +18,21 @@
 package puzzledbclient
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
-	"github.com/dvaumoron/puzzlelogger"
 	"github.com/glebarez/sqlite" // driver without cgo
+	"github.com/uptrace/opentelemetry-go-extra/otelgorm"
+	"github.com/uptrace/opentelemetry-go-extra/otelzap"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"gorm.io/driver/clickhouse"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
-	gormlogger "gorm.io/gorm/logger"
 )
 
-const gormKey = "gorm"
-
-func Create(logger *zap.Logger) *gorm.DB {
+func Create(logger *otelzap.Logger) *gorm.DB {
 	kind := strings.ToLower(os.Getenv("DB_SERVER_TYPE"))
 	addr := os.Getenv("DB_SERVER_ADDR")
 	var dialector gorm.Dialector
@@ -55,12 +51,15 @@ func Create(logger *zap.Logger) *gorm.DB {
 		logger.Fatal("Unknown database type", zap.String("kind", kind))
 	}
 
-	db, err := gorm.Open(dialector, &gorm.Config{Logger: gormlogger.New(
-		loggerWrapper{inner: logger}, gormlogger.Config{LogLevel: convertLevel(logger.Level())}),
-	})
+	db, err := gorm.Open(dialector)
 	if err != nil {
 		logger.Fatal("Database connection failed", zap.Error(err))
 	}
+
+	if err = db.Use(otelgorm.NewPlugin(otelgorm.WithDBName(kind))); err != nil {
+		logger.Fatal("Failed to initialize telemetry", zap.Error(err))
+	}
+
 	return db
 }
 
@@ -79,22 +78,4 @@ func BuildLikeFilter(filter string) string {
 		likeBuilder.WriteByte('%')
 	}
 	return likeBuilder.String()
-}
-
-type loggerWrapper struct {
-	inner *zap.Logger
-}
-
-func (w loggerWrapper) Printf(msg string, args ...any) {
-	fmt.Fprintf(puzzlelogger.InfoWrapper{Inner: w.inner, Lib: gormKey}, msg, args...)
-}
-
-func convertLevel(level zapcore.Level) gormlogger.LogLevel {
-	switch level {
-	case zapcore.DebugLevel, zapcore.InfoLevel:
-		return gormlogger.Info
-	case zapcore.WarnLevel:
-		return gormlogger.Warn
-	}
-	return gormlogger.Error
 }
